@@ -2,14 +2,45 @@ import pandas as pd
 from matplotlib import pyplot as plt
 from geopy.distance import great_circle
 import pytz
+import os
 
+# Function to generate a configurable graph and save it to a file in a "Graphs" folder
+def generate_graph(df, xAxis, yAxis, graph_title, graph_color, graph_type='line', xlabel=None, ylabel=None, grid_style='-', grid_alpha=0.5, file_format='pdf'):
+    fig, ax = plt.subplots()
+    
+    # Plot the data based on the graph_type
+    if graph_type == 'line':
+        ax.plot(df[xAxis], df[yAxis], color=graph_color)
+    elif graph_type == 'bar':
+        ax.bar(df[xAxis], df[yAxis], color=graph_color)
+    elif graph_type == 'scatter':
+        ax.scatter(df[xAxis], df[yAxis], color=graph_color)
+    else:
+        raise ValueError(f"Unsupported graph_type '{graph_type}'. Supported types are 'line', 'bar', and 'scatter'.")
+    
+    # Set the title and axis labels
+    ax.set_title(graph_title)
+    if xlabel:
+        ax.set_xlabel(xlabel)
+    if ylabel:
+        ax.set_ylabel(ylabel)
+    
+    # Customize the grid
+    ax.grid(linestyle=grid_style, alpha=grid_alpha)
+    
+    # Create the "Graphs" folder if it doesn't exist
+    graphs_folder = 'Graphs'
+    if not os.path.exists(graphs_folder):
+        os.makedirs(graphs_folder)
 
-# Function to generate a simple line graph, add a grid, and save the graph to a file
-def generate_graph(df, xAxis, yAxis, graph_title, graph_color):
-    df_graph = df.plot(x=xAxis, y=yAxis, title=graph_title, color=graph_color)
-    df_graph.grid()
-    df_graph.figure.savefig(graph_title + '.pdf')
+    # Save the graph to a file in the "Graphs" folder
+    fig.savefig(os.path.join(graphs_folder, graph_title + '.' + file_format), bbox_inches='tight')
+    
+    # Show the graph
+    plt.show()
+
     return
+
 
 # Function to convert a datetime to UTC based on the timezone
 def convert_to_utc(dt, tz):
@@ -63,8 +94,8 @@ print("Reading in accident data...")
 # Reads in accident data
 acc_data = pd.read_csv("US_Accidents.csv")
 
-
 print('Cleaning data...')
+
 # Removes NAN values from acc_data
 acc_data = acc_data.dropna()
 
@@ -81,9 +112,6 @@ acc_data['Start_Time_UTC'] = acc_data.apply(lambda row: convert_to_utc(row['Star
 
 # Drops the original Start_Time column and Timezone column
 acc_data = acc_data.drop(['Start_Time', 'Timezone'], axis=1)
-
-print(acc_data.head())
-
 
 
 print("Reading in weather data...")
@@ -113,8 +141,6 @@ weather_data['EndTime(UTC)'] = pd.to_datetime(weather_data['EndTime(UTC)'])
 weather_data['StartTime(UTC)'] = weather_data['StartTime(UTC)'].dt.tz_localize('UTC')
 weather_data['EndTime(UTC)'] = weather_data['EndTime(UTC)'].dt.tz_localize('UTC')
 
-
-print(weather_data.head())
 
 print("Grouping data by state...")
 
@@ -147,22 +173,55 @@ result_df = pd.concat(result_dataframes)
 # Reset the index of the final dataframe
 result_df.reset_index(drop=True, inplace=True)
 
-print(result_df.head())
+print(result_df.columns)
 
-'''
+
+print("Generating graphs...")
+
 # Generate a graph for the number of accidents per weather type
-accidents_per_weather_type = result_df.groupby('Weather_Type').size().reset_index(name='Count')
-generate_graph(accidents_per_weather_type, 'Weather_Type', 'Count', 'Accidents per Weather Type', 'red')
+# Group the data by weather type and count the number of accidents for each weather type
+accidents_by_weather = result_df.groupby('Weather_Type')['ID'].count().reset_index()
+
+# Sort the data by the number of accidents in descending order
+accidents_by_weather_sorted = accidents_by_weather.sort_values('ID', ascending=False)
+
+# Generate a bar graph for the number of accidents per Weather_Type
+generate_graph(
+    df=accidents_by_weather_sorted,
+    xAxis='Weather_Type',
+    yAxis='ID',
+    graph_title='Number of Accidents per Weather Type',
+    graph_color='blue',
+    graph_type='bar',
+    xlabel='Weather Type',
+    ylabel='Number of Accidents',
+    file_format='png'
+)
+
+
 
 # Generate a graph for the number of accidents per weather severity
-accidents_per_weather_severity = result_df.groupby('Weather_Severity').size().reset_index(name='Count')
-generate_graph(accidents_per_weather_severity, 'Weather_Severity', 'Count', 'Accidents per Weather Severity', 'blue')
+# Group the data by Weather_Severity and count the number of accidents for each Weather_Severity
+accidents_by_severity = result_df.groupby('Weather_Severity')['ID'].count().reset_index()
+
+# Sort the data by the number of accidents in descending order
+accidents_by_severity_sorted = accidents_by_severity.sort_values('ID', ascending=False)
+
+# Generate a bar graph for the number of accidents per Weather_Severity
+generate_graph(
+    df=accidents_by_severity_sorted,
+    xAxis='Weather_Severity',
+    yAxis='ID',
+    graph_title='Number of Accidents per Weather Severity',
+    graph_color='green',
+    graph_type='bar',
+    xlabel='Weather Severity',
+    ylabel='Number of Accidents',
+    file_format='png'
+)
+
 
 # Generate a graph for the number of accidents per weather type by year
-accidents_per_weather_type_by_year = result_df.groupby(['Weather_Type', result_df['Start_Time_UTC'].dt.year]).size().reset_index(name='Count')
-generate_graph(accidents_per_weather_type_by_year, 'Weather_Type', 'Count', 'Accidents per Weather Type by Year', 'red')
+
 
 # Generate a graph for the number of accidents per weather severity by year
-accidents_per_weather_severity_by_year = result_df.groupby(['Weather_Severity', result_df['Start_Time_UTC'].dt.year]).size().reset_index(name='Count')
-generate_graph(accidents_per_weather_severity_by_year, 'Weather_Severity', 'Count', 'Accidents per Weather Severity by Year', 'blue')
-'''
