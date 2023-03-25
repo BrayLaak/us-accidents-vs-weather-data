@@ -11,13 +11,22 @@ def generate_graph(df, xAxis, yAxis, graph_title, graph_color):
     df_graph.figure.savefig(graph_title + '.pdf')
     return
 
+# Function to convert a datetime to UTC based on the timezone
+def convert_to_utc(dt, tz):
+    local_tz = pytz.timezone(tz)
+    local_time = local_tz.localize(dt, is_dst=None)
+    utc_time = local_time.astimezone(pytz.utc)
+    return utc_time
 
 # Function to calculate the distance between two points
 def calculate_distance(lat1, lon1, lat2, lon2):
+    if pd.isna(lat1) or pd.isna(lon1) or pd.isna(lat2) or pd.isna(lon2):
+        return None
     return great_circle((lat1, lon1), (lat2, lon2)).miles
 
-# Function to perform the cross join on dataframes for a state
-def cross_join_state(acc_data, weather_data, threshold_distance):
+
+# Function to perform a merge asof on the two dataframes, calculate the distance for each row, and filter the rows based on the threshold distance
+def merge_by_state(acc_data, weather_data, threshold_distance):
     result_dataframes = []
     states = acc_data['State'].unique()
 
@@ -34,6 +43,7 @@ def cross_join_state(acc_data, weather_data, threshold_distance):
 
         # Calculates distance for each row
         merged_df['distance'] = merged_df.apply(lambda row: calculate_distance(row['Start_Lat'], row['Start_Lng'], row['LocationLat'], row['LocationLng']), axis=1)
+        merged_df = merged_df[merged_df['distance'].notna()]
 
         # Filters rows based on distance threshold
         merged_df = merged_df[merged_df['distance'] <= threshold_distance]
@@ -48,9 +58,13 @@ def cross_join_state(acc_data, weather_data, threshold_distance):
 threshold_distance = 5
 
 
+print("Reading in accident data...")
+
 # Reads in accident data
 acc_data = pd.read_csv("US_Accidents.csv")
 
+
+print('Cleaning data...')
 # Removes NAN values from acc_data
 acc_data = acc_data.dropna()
 
@@ -62,19 +76,22 @@ acc_data = acc_data.rename(columns={'Severity': 'Acc_Severity'})
 # Ensures the 'Start_Time' column is in datetime format
 acc_data['Start_Time'] = pd.to_datetime(acc_data['Start_Time'])
 
-# Converts the timezone of the 'Start_Time' column and renames the column to 'Start_Time_UTC'
-acc_data['Start_Time'] = acc_data['Start_Time'].dt.tz_localize(acc_data['Timezone']).dt.tz_convert('UTC')
-acc_data.rename(columns={'Start_Time': 'Start_Time_UTC'}, inplace=True)
+# Applies the conversion function to the Start_Time column
+acc_data['Start_Time_UTC'] = acc_data.apply(lambda row: convert_to_utc(row['Start_Time'], row['Timezone']), axis=1)
 
-# Drops the Timezone column
-acc_data = acc_data.drop(['Timezone'], axis=1)
+# Drops the original Start_Time column and Timezone column
+acc_data = acc_data.drop(['Start_Time', 'Timezone'], axis=1)
 
 print(acc_data.head())
 
 
 
+print("Reading in weather data...")
+
 #read in weather data
 weather_data = pd.read_csv("Weather_Events.csv")
+
+print("Cleaning weather data...")
 
 # Select the columns that are needed for the analysis
 weather_data = weather_data[['Type', 'State', 'Severity', 'StartTime(UTC)', 'EndTime(UTC)', 'Precipitation(in)', 'LocationLat', 'LocationLng']]
@@ -99,6 +116,7 @@ weather_data['EndTime(UTC)'] = weather_data['EndTime(UTC)'].dt.tz_localize('UTC'
 
 print(weather_data.head())
 
+print("Grouping data by state...")
 
 # Group the dataframes by state
 acc_data_groups = acc_data.groupby('State')
@@ -110,12 +128,15 @@ unique_states = set(acc_data['State'].unique()).union(weather_data['State'].uniq
 # Initialize a list to store the dataframes for each state
 result_dataframes = []
 
-# Iterate through the unique states and perform the cross join for each state
+
+print("Performing merge of data...")
+
+# Iterate through the unique states and perform the merge for each state
 for state in unique_states:
     acc_df = acc_data[acc_data['State'] == state]
     weather_df = weather_data[weather_data['State'] == state]
 
-    merged_df = cross_join_state(acc_df, weather_df, threshold_distance)
+    merged_df = merge_by_state(acc_df, weather_df, threshold_distance)
 
     # Append the merged_df to the list of dataframes
     result_dataframes.append(merged_df)
