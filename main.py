@@ -3,9 +3,14 @@ from matplotlib import pyplot as plt
 from geopy.distance import great_circle
 import pytz
 import os
+import calendar
+
 
 # Function to generate a configurable graph and save it to a file in a "Graphs" folder
-def generate_graph(df, xAxis, yAxis, graph_title, graph_color, graph_type='line', xlabel=None, ylabel=None, grid_style='-', grid_alpha=0.5, file_format='pdf'):
+import matplotlib.pyplot as plt
+import os
+
+def generate_graph(df, xAxis, yAxis, graph_title, graph_color, graph_type='line', xlabel=None, ylabel=None, grid_style='-', grid_alpha=0.5, file_format='pdf', xticks=None, xtick_rotation=0, xtick_labels=None):
     fig, ax = plt.subplots()
     
     # Plot the data based on the graph_type
@@ -28,6 +33,18 @@ def generate_graph(df, xAxis, yAxis, graph_title, graph_color, graph_type='line'
     # Customize the grid
     ax.grid(linestyle=grid_style, alpha=grid_alpha)
     
+    # Set custom xticks if provided
+    if xticks is not None and len(xticks) > 0:
+        ax.set_xticks(xticks)
+
+    # Set the xtick labels if provided
+    if xtick_labels is not None and len(xtick_labels) > 0:
+        ax.set_xticklabels(xtick_labels)
+
+    # Set the xtick rotation
+    if xtick_rotation:
+        plt.xticks(rotation=xtick_rotation)
+
     # Create the "Graphs" folder if it doesn't exist
     graphs_folder = 'Graphs'
     if not os.path.exists(graphs_folder):
@@ -42,12 +59,14 @@ def generate_graph(df, xAxis, yAxis, graph_title, graph_color, graph_type='line'
     return
 
 
+
 # Function to convert a datetime to UTC based on the timezone
 def convert_to_utc(dt, tz):
     local_tz = pytz.timezone(tz)
     local_time = local_tz.localize(dt, is_dst=None)
     utc_time = local_time.astimezone(pytz.utc)
     return utc_time
+
 
 # Function to calculate the distance between two points
 def calculate_distance(lat1, lon1, lat2, lon2):
@@ -92,7 +111,7 @@ threshold_distance = 5
 print("Reading in accident data...")
 
 # Reads in accident data
-acc_data = pd.read_csv("US_Accidents.csv")
+acc_data = pd.read_csv("US_Accidents_Dec21_Updated.csv")
 
 print('Cleaning data...')
 
@@ -117,7 +136,7 @@ acc_data = acc_data.drop(['Start_Time', 'Timezone'], axis=1)
 print("Reading in weather data...")
 
 #read in weather data
-weather_data = pd.read_csv("Weather_Events.csv")
+weather_data = pd.read_csv("WeatherEvents_Jan2016-Dec2021.csv")
 
 print("Cleaning weather data...")
 
@@ -173,7 +192,8 @@ result_df = pd.concat(result_dataframes)
 # Reset the index of the final dataframe
 result_df.reset_index(drop=True, inplace=True)
 
-print(result_df.columns)
+# Remove nan values from the dataframe
+result_df = result_df.dropna()
 
 
 print("Generating graphs...")
@@ -199,7 +219,6 @@ generate_graph(
 )
 
 
-
 # Generate a graph for the number of accidents per weather severity
 # Group the data by Weather_Severity and count the number of accidents for each Weather_Severity
 accidents_by_severity = result_df.groupby('Weather_Severity')['ID'].count().reset_index()
@@ -221,7 +240,99 @@ generate_graph(
 )
 
 
-# Generate a graph for the number of accidents per weather type by year
+# Generate a graph for the number of accidents per month
+# Extract the month from the 'Start_Time_UTC' column and create a new column 'Month'
+result_df['Month'] = result_df['Start_Time_UTC'].dt.month
+
+# Group the result_df DataFrame by the 'Month' column, count the number of accidents for each month, and reset the index
+accidents_by_month = result_df.groupby('Month')['ID'].count().reset_index()
+
+# Create a DataFrame for all 12 months
+all_months = pd.DataFrame({'Month': range(1, 13), 'Month_Name': [calendar.month_name[m] for m in range(1, 13)]})
+
+# Convert the 'Month' column in the 'accidents_by_month' DataFrame to type int64
+accidents_by_month['Month'] = accidents_by_month['Month'].astype(int)
+
+# Merge the all_months DataFrame with the accidents_by_month DataFrame to ensure all months are included
+accidents_by_month_complete = pd.concat([all_months.set_index('Month'), accidents_by_month.set_index('Month')], axis=1, sort=True).reset_index()
+
+# Set the figure size and adjust the margins
+fig, ax = plt.subplots(figsize=(8, 6))
+plt.subplots_adjust(left=0.1, bottom=0.25)
+
+# Generate a graph for the number of accidents per month
+# Calculate number of accidents per month
+result_df['Month'] = result_df['Start_Time_UTC'].dt.month_name()
+accidents_by_month = result_df.groupby('Month')['ID'].count().reset_index()
+
+# Generate graph for number of accidents per month
+generate_graph(
+    df=accidents_by_month,
+    xAxis='Month',
+    yAxis='ID',
+    graph_title='Number of Accidents per Month',
+    graph_color='green',
+    xlabel='Month',
+    ylabel='Number of Accidents',
+    xticks=accidents_by_month_complete['Month'],
+    xtick_rotation=45,
+    file_format='png'
+)
 
 
-# Generate a graph for the number of accidents per weather severity by year
+
+# Generate a graph for the number of accidents per day of the week
+# Extract the day of the week from the 'Start_Time_UTC' column and create a new column 'Day_of_Week'
+result_df['Day_of_Week'] = result_df['Start_Time_UTC'].dt.dayofweek
+
+# Group the result_df DataFrame by the 'Day_of_Week' column, count the number of accidents for each day of the week, and reset the index
+accidents_by_day_of_week = result_df.groupby('Day_of_Week')['ID'].count().reset_index()
+
+# Create a DataFrame for all 7 days of the week
+all_days = pd.DataFrame({'Day_of_Week': range(0, 7), 'Day_Name': [calendar.day_name[d] for d in range(0, 7)]})
+
+# Merge the all_days DataFrame with the accidents_by_day_of_week DataFrame to ensure all days are included
+accidents_by_day_of_week_complete = all_days.merge(accidents_by_day_of_week, on='Day_of_Week', how='left').fillna(0)
+
+# Generate a graph for the number of accidents per day of the week
+generate_graph(
+    df=accidents_by_day_of_week_complete,
+    xAxis='Day_Name',
+    yAxis='ID',
+    graph_title='Number of Accidents per Day of the Week',
+    graph_color='blue',
+    xlabel='Day of the Week',
+    ylabel='Number of Accidents',
+    file_format='png'
+)
+
+
+# Generate a graph for the number of accidents per hour of the day
+# Extract the hour of the day from the 'Start_Time_UTC' column and create a new column 'Hour_of_Day'
+result_df['Hour_of_Day'] = result_df['Start_Time_UTC'].dt.hour
+
+# Group the result_df DataFrame by the 'Hour_of_Day' column, count the number of accidents (using the 'ID' column), and reset the index to create a new DataFrame 'accidents_by_hour_of_day'
+accidents_by_hour_of_day = result_df.groupby('Hour_of_Day')['ID'].count().reset_index()
+
+
+# Format the hours in AM and PM
+hour_labels = []
+for hour in range(0, 24):
+    formatted_hour = pd.Timestamp(year=2000, month=1, day=1, hour=hour).strftime('%I %p')
+    hour_labels.append(formatted_hour)
+    
+
+# Call the generate_graph function to generate the graph
+generate_graph(
+    df=accidents_by_hour_of_day,
+    xAxis='Hour_of_Day',
+    yAxis='ID',
+    graph_title='Number of Accidents per Hour of the Day',
+    graph_color='red',
+    xlabel='Hour of the Day',
+    ylabel='Number of Accidents',
+    xticks=list(range(0, 24)),
+    xtick_labels=hour_labels,
+    xtick_rotation=45,
+    file_format='png'
+)

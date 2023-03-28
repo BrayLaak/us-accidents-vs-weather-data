@@ -1,6 +1,7 @@
 #Exclude data files
-/US_Accidents.csv
-/Weather_Events.csv
+/WeatherEvents_Jan2016-Dec2021.csv
+/US_Accidents_Dec21_updated.csv
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
