@@ -12,22 +12,21 @@ This project compares US traffic accidents with weather data collected from acro
 The graphs generated investigate the accidents that occur per weather severity, the accidents that occur per weather type, the accidents that occur per month, day in the week, and hour in the day to see what trends come up.
 
 
-
-
 In this project it can be seen that the most traffic accidents occur in rainy weather and the second most in fog:
+![Accidents per Weather Type](Example%20Graphs/Number of Accidents per Weather Type.png)
 
 
 Oddly, the most accidents occur in weather with a light severity:
+![Accidents per Weather Severity](Example%20Graphs/Number of Accidents per Weather Severity.png)
 
-
-The most accidents occur in the months of and :
-
+The most accidents occur in the months of November and December:
+![Accidents per Month](Example%20Graphs/Number of Accidents per Month.png)
 
 It can also be seen that the Friday has the highest amount of traffic accidents:
+![Accidents per Day of the Week](Example%20Graphs/Number of Accidents per Day of the Week.png)
 
-
-And from are the times with the highest numbers of accidents:
-
+And from 5-9 PM the highest numbers of accidents occur:
+![Accidents per Hour of the Day](Example%20Graphs/Number of Accidents per Hour of the Day.png)
 
 # Features
 
