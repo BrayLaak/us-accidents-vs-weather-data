@@ -9,7 +9,7 @@ This project compares US traffic accidents with weather data collected from acro
 
 # Explanation
 
-The graphs generated investigate the accidents that occur per weather severity, the accidents that occur per weather type, the accidents that occur per month, day in the week, and hour in the day to see what trends come up.
+The graphs generated investigate the accidents that occur per weather severity, the accidents that occur per weather type, the accidents that occur per month, day in the week, and hour in the day to see what trends come up. The graphs show the total numbers from data collected 2016-2021.
 
 
 In this project it can be seen that the most traffic accidents occur in rainy weather and the second most in fog:
