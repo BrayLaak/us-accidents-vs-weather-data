@@ -303,6 +303,7 @@ generate_graph(
     graph_color='blue',
     xlabel='Day of the Week',
     ylabel='Number of Accidents',
+    xtick_rotation=45,
     file_format='png'
 )
 
@@ -333,6 +334,6 @@ generate_graph(
     ylabel='Number of Accidents',
     xticks=list(range(0, 24)),
     xtick_labels=hour_labels,
-    xtick_rotation=45,
+    xtick_rotation=80,
     file_format='png'
 )
