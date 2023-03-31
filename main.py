@@ -195,6 +195,9 @@ result_df.reset_index(drop=True, inplace=True)
 # Remove nan values from the dataframe
 result_df = result_df.dropna()
 
+# create a number of years variable to use for calculating the average number of accidents per year
+num_years = result_df['Start_Time_UTC'].dt.year.nunique()
+
 
 print("Generating graphs...")
 
@@ -203,14 +206,16 @@ print("Generating graphs...")
 accidents_by_weather = result_df.groupby('Weather_Type')['ID'].count().reset_index()
 
 # Sort the data by the number of accidents in descending order
+# divide by the number of years to get the average number of accidents per year
 accidents_by_weather_sorted = accidents_by_weather.sort_values('ID', ascending=False)
+accidents_by_weather_sorted['ID'] = accidents_by_weather_sorted['ID'] / num_years
 
 # Generate a bar graph for the number of accidents per Weather_Type
 generate_graph(
     df=accidents_by_weather_sorted,
     xAxis='Weather_Type',
     yAxis='ID',
-    graph_title='Number of Accidents per Weather Type',
+    graph_title='Avg_Accidents_by_Weather_Type_2016_2021',
     graph_color='blue',
     graph_type='bar',
     xlabel='Weather Type',
@@ -224,14 +229,16 @@ generate_graph(
 accidents_by_severity = result_df.groupby('Weather_Severity')['ID'].count().reset_index()
 
 # Sort the data by the number of accidents in descending order
+# divide by the number of years to get the average number of accidents per year
 accidents_by_severity_sorted = accidents_by_severity.sort_values('ID', ascending=False)
+accidents_by_severity_sorted['ID'] = accidents_by_severity_sorted['ID'] / num_years
 
 # Generate a bar graph for the number of accidents per Weather_Severity
 generate_graph(
     df=accidents_by_severity_sorted,
     xAxis='Weather_Severity',
     yAxis='ID',
-    graph_title='Number of Accidents per Weather Severity',
+    graph_title='Avg_Accidents_by_Weather_Severity_2016_2021',
     graph_color='green',
     graph_type='bar',
     xlabel='Weather Severity',
@@ -244,8 +251,10 @@ generate_graph(
 # Extract the month from the 'Start_Time_UTC' column and create a new column 'Month'
 result_df['Month'] = result_df['Start_Time_UTC'].dt.month
 
-# Group the result_df DataFrame by the 'Month' column, count the number of accidents for each month, and reset the index
+# Group the result_df DataFrame by the 'Month' column, count the number of accidents for each month, 
+# reset the index, and divide by the number of years to get the average number of accidents per year
 accidents_by_month = result_df.groupby('Month')['ID'].count().reset_index()
+accidents_by_month['ID'] = accidents_by_month['ID'] / num_years
 
 # Create a DataFrame for all 12 months
 all_months = pd.DataFrame({'Month': range(1, 13), 'Month_Name': [calendar.month_name[m] for m in range(1, 13)]})
@@ -256,37 +265,40 @@ accidents_by_month['Month'] = accidents_by_month['Month'].astype(int)
 # Merge the all_months DataFrame with the accidents_by_month DataFrame to ensure all months are included
 accidents_by_month_complete = pd.concat([all_months.set_index('Month'), accidents_by_month.set_index('Month')], axis=1, sort=True).reset_index()
 
-# Set the figure size and adjust the margins
-fig, ax = plt.subplots(figsize=(8, 6))
-plt.subplots_adjust(left=0.1, bottom=0.25)
-
 # Generate a graph for the number of accidents per month
 # Calculate number of accidents per month
 result_df['Month'] = result_df['Start_Time_UTC'].dt.month_name()
 accidents_by_month = result_df.groupby('Month')['ID'].count().reset_index()
+
+# Create a month order mapping
+month_order = {month: i for i, month in enumerate(calendar.month_name[1:])}
+
+# Sort accidents_by_month DataFrame using the month_order mapping
+accidents_by_month['Month_Order'] = accidents_by_month['Month'].map(month_order)
+accidents_by_month = accidents_by_month.sort_values('Month_Order').drop('Month_Order', axis=1)
 
 # Generate graph for number of accidents per month
 generate_graph(
     df=accidents_by_month,
     xAxis='Month',
     yAxis='ID',
-    graph_title='Number of Accidents per Month',
+    graph_title='Avg_Accidents_per_Month_2016_2021',
     graph_color='green',
     xlabel='Month',
     ylabel='Number of Accidents',
-    xticks=accidents_by_month_complete['Month'],
     xtick_rotation=45,
     file_format='png'
 )
-
 
 
 # Generate a graph for the number of accidents per day of the week
 # Extract the day of the week from the 'Start_Time_UTC' column and create a new column 'Day_of_Week'
 result_df['Day_of_Week'] = result_df['Start_Time_UTC'].dt.dayofweek
 
-# Group the result_df DataFrame by the 'Day_of_Week' column, count the number of accidents for each day of the week, and reset the index
+# Group the result_df DataFrame by the 'Day_of_Week' column, count the number of accidents for each day of the week, 
+# reset the index, and divide by the number of years to get the average number of accidents per year
 accidents_by_day_of_week = result_df.groupby('Day_of_Week')['ID'].count().reset_index()
+accidents_by_day_of_week['ID'] = accidents_by_day_of_week['ID'] / num_years
 
 # Create a DataFrame for all 7 days of the week
 all_days = pd.DataFrame({'Day_of_Week': range(0, 7), 'Day_Name': [calendar.day_name[d] for d in range(0, 7)]})
@@ -299,7 +311,7 @@ generate_graph(
     df=accidents_by_day_of_week_complete,
     xAxis='Day_Name',
     yAxis='ID',
-    graph_title='Number of Accidents per Day of the Week',
+    graph_title='Avg_Accidents_per_Day_of_the_Week_2016_2021',
     graph_color='blue',
     xlabel='Day of the Week',
     ylabel='Number of Accidents',
@@ -312,9 +324,10 @@ generate_graph(
 # Extract the hour of the day from the 'Start_Time_UTC' column and create a new column 'Hour_of_Day'
 result_df['Hour_of_Day'] = result_df['Start_Time_UTC'].dt.hour
 
-# Group the result_df DataFrame by the 'Hour_of_Day' column, count the number of accidents (using the 'ID' column), and reset the index to create a new DataFrame 'accidents_by_hour_of_day'
+# Group the result_df DataFrame by the 'Hour_of_Day' column, count the number of accidents (using the 'ID' column), 
+# reset the index to create a new DataFrame 'accidents_by_hour_of_day', and divide by the number of years to get the average number of accidents per year
 accidents_by_hour_of_day = result_df.groupby('Hour_of_Day')['ID'].count().reset_index()
-
+accidents_by_hour_of_day['ID'] = accidents_by_hour_of_day['ID'] / num_years
 
 # Format the hours in AM and PM
 hour_labels = []
@@ -322,13 +335,12 @@ for hour in range(0, 24):
     formatted_hour = pd.Timestamp(year=2000, month=1, day=1, hour=hour).strftime('%I %p')
     hour_labels.append(formatted_hour)
     
-
 # Call the generate_graph function to generate the graph
 generate_graph(
     df=accidents_by_hour_of_day,
     xAxis='Hour_of_Day',
     yAxis='ID',
-    graph_title='Number of Accidents per Hour of the Day',
+    graph_title='Avg_Accidents_per_Hour_of_the_Day_2016_2021',
     graph_color='red',
     xlabel='Hour of the Day',
     ylabel='Number of Accidents',
