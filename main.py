@@ -349,3 +349,5 @@ generate_graph(
     xtick_rotation=80,
     file_format='png'
 )
+
+print('Complete')
